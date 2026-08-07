@@ -1,0 +1,28 @@
+---
+- name: Einzelne Kafka-Konfigurationswerte aktualisieren und Service neu starten
+  hosts: kafka
+  serial: 1
+
+  vars:
+    kafka_config_dest: /etc/kafka/server.properties
+    kafka_service_name: kafka.service
+
+  tasks:
+    - name: Konfigurationswerte in {{ kafka_config_dest }} setzen
+      ansible.builtin.lineinfile:
+        path: "{{ kafka_config_dest }}"
+        regexp: "^{{ item.key | regex_escape }}\\s*=.*"
+        line: "{{ item.key }}={{ item.value }}"
+        backup: true
+        state: present
+      loop: "{{ kafka_config_overrides | dict2items }}"
+      loop_control:
+        label: "{{ item.key }}"
+      notify: Kafka neu starten
+
+  handlers:
+    - name: Kafka neu starten
+      become: true
+      ansible.builtin.systemd:
+        name: "{{ kafka_service_name }}"
+        state: restarted

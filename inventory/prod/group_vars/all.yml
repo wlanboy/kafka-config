@@ -1,0 +1,10 @@
+---
+env_name: prod
+
+# Nur diese Werte werden in der bestehenden /etc/kafka/server.properties
+# auf den VMs überschrieben (Zeile für Zeile). Alles andere (Secrets, SSL, ...)
+# bleibt unangetastet.
+kafka_config_overrides:
+  num.partitions: "12"
+  default.replication.factor: "3"
+  log.retention.hours: "168"
