@@ -46,9 +46,20 @@ ansible-playbook -i inventory/prod/hosts.ini playbook.yml
 4. Owner, Group und Dateirechte werden nicht angefasst.
 5. Der Handler startet `kafka.service` per `systemd`-Modul neu — aber **nur wenn
    sich mindestens ein Wert tatsächlich geändert hat**, nicht bei jedem Lauf
-   (idempotent). Es wird kein `become`/sudo verwendet; der `ansible_user` muss auf
-   den Ziel-VMs selbst genug Rechte haben, um `/etc/kafka/server.properties` zu
-   editieren und `kafka.service` neu zu starten.
+   (idempotent). Für das Editieren der Config-Datei wird kein `become`/sudo
+   verwendet; der `ansible_user` muss auf den Ziel-VMs selbst genug Rechte haben,
+   um `/etc/kafka/server.properties` zu editieren.
+6. Nach dem Neustart prüft ein Health-Check (ebenfalls als Handler, läuft also nur
+   bei tatsächlicher Änderung), ob der Broker wieder gesund ist, bevor der nächste
+   Host drankommt (`serial: 1`):
+   - Warten, bis Port `kafka_broker_port` (Default `9092`) wieder offen ist
+     (Timeout `kafka_health_check_timeout`, Default `60` Sekunden).
+   - Abfragen des `systemd`-Status von `kafka_service_name` und Abbruch, falls
+     `ActiveState` nicht `active` ist.
+   Dank `any_errors_fatal: true` bricht der komplette Rollout sofort ab, sobald ein
+   Host den Health-Check nicht besteht — es werden keine weiteren Hosts mehr
+   angefasst, damit ein fehlerhafter Wert in `kafka_config_overrides` nicht den
+   gesamten Cluster nacheinander lahmlegt.
 
 ## Ablauf für einen Config-Change
 
@@ -72,9 +83,11 @@ ansible-playbook -i inventory/prod/hosts.ini playbook.yml
 - Platzhalter-Hostnamen in den vier `inventory/*/hosts.ini` durch die echten
   VM-Namen/IPs ersetzen.
 - `ansible_user` in den `hosts.ini`-Dateien anpassen, falls nicht `ansible`.
-- Service-Name (`kafka_service_name`, Default `kafka.service`) und Pfad der
-  Config-Datei (`kafka_config_dest`, Default `/etc/kafka/server.properties`)
-  sind Defaults in `playbook.yml` und können bei Bedarf pro Environment in
+- Service-Name (`kafka_service_name`, Default `kafka.service`), Pfad der
+  Config-Datei (`kafka_config_dest`, Default `/etc/kafka/server.properties`),
+  Broker-Port für den Health-Check (`kafka_broker_port`, Default `9092`) und
+  dessen Timeout (`kafka_health_check_timeout`, Default `60` Sekunden) sind
+  Defaults in `playbook.yml` und können bei Bedarf pro Environment in
   `inventory/<env>/group_vars/all.yml` überschrieben werden, ohne das Playbook
   anzufassen.
 - `kafka_config_overrides` je Environment in `inventory/<env>/group_vars/all.yml`

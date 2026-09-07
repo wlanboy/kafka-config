@@ -2,12 +2,15 @@
 - name: Einzelne Kafka-Konfigurationswerte aktualisieren und Service neu starten
   hosts: kafka
   serial: 1
+  any_errors_fatal: true
   gather_facts: false
 
   vars:
     # Defaults – pro Environment in inventory/<env>/group_vars/all.yml überschreibbar
     kafka_config_dest: "{{ kafka_config_dest | default('/etc/kafka/server.properties') }}"
     kafka_service_name: "{{ kafka_service_name | default('kafka.service') }}"
+    kafka_broker_port: "{{ kafka_broker_port | default(9092) }}"
+    kafka_health_check_timeout: "{{ kafka_health_check_timeout | default(60) }}"
 
   tasks:
     - name: Konfigurationswerte in {{ kafka_config_dest }} setzen
@@ -20,7 +23,9 @@
       loop: "{{ kafka_config_overrides | dict2items }}"
       loop_control:
         label: "{{ item.key }}"
-      notify: Kafka neu starten
+      notify:
+        - Kafka neu starten
+        - Kafka-Health-Check
 
   handlers:
     - name: Kafka neu starten
@@ -28,3 +33,29 @@
       ansible.builtin.systemd:
         name: "{{ kafka_service_name }}"
         state: restarted
+
+    - name: Auf Kafka-Port warten
+      listen: Kafka-Health-Check
+      ansible.builtin.wait_for:
+        port: "{{ kafka_broker_port }}"
+        host: "{{ ansible_host | default(inventory_hostname) }}"
+        timeout: "{{ kafka_health_check_timeout }}"
+
+    - name: Kafka-Service-Status abfragen
+      listen: Kafka-Health-Check
+      become: true
+      ansible.builtin.systemd:
+        name: "{{ kafka_service_name }}"
+      register: kafka_status
+
+    - name: Fehlschlagen, wenn Kafka-Service nicht aktiv ist
+      listen: Kafka-Health-Check
+      ansible.builtin.assert:
+        that:
+          - kafka_status.status.ActiveState == "active"
+        fail_msg: >-
+          Kafka-Service {{ kafka_service_name }} ist nach dem Neustart auf
+          {{ inventory_hostname }} nicht aktiv
+          (ActiveState={{ kafka_status.status.ActiveState }}). Rollout wird
+          wegen any_errors_fatal abgebrochen.
+        success_msg: "Kafka-Service {{ kafka_service_name }} ist aktiv."
