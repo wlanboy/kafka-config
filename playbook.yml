@@ -2,10 +2,12 @@
 - name: Einzelne Kafka-Konfigurationswerte aktualisieren und Service neu starten
   hosts: kafka
   serial: 1
+  gather_facts: false
 
   vars:
-    kafka_config_dest: /etc/kafka/server.properties
-    kafka_service_name: kafka.service
+    # Defaults – pro Environment in inventory/<env>/group_vars/all.yml überschreibbar
+    kafka_config_dest: "{{ kafka_config_dest | default('/etc/kafka/server.properties') }}"
+    kafka_service_name: "{{ kafka_service_name | default('kafka.service') }}"
 
   tasks:
     - name: Konfigurationswerte in {{ kafka_config_dest }} setzen

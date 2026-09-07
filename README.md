@@ -72,7 +72,10 @@ ansible-playbook -i inventory/prod/hosts.ini playbook.yml
 - Platzhalter-Hostnamen in den vier `inventory/*/hosts.ini` durch die echten
   VM-Namen/IPs ersetzen.
 - `ansible_user` in den `hosts.ini`-Dateien anpassen, falls nicht `ansible`.
-- Service-Name `kafka.service` in `playbook.yml` (`kafka_service_name`) anpassen,
-  falls abweichend.
+- Service-Name (`kafka_service_name`, Default `kafka.service`) und Pfad der
+  Config-Datei (`kafka_config_dest`, Default `/etc/kafka/server.properties`)
+  sind Defaults in `playbook.yml` und können bei Bedarf pro Environment in
+  `inventory/<env>/group_vars/all.yml` überschrieben werden, ohne das Playbook
+  anzufassen.
 - `kafka_config_overrides` je Environment in `inventory/<env>/group_vars/all.yml`
   mit den tatsächlich gewünschten Werten befüllen (aktuell nur Beispielwerte).
