@@ -13,7 +13,7 @@
     kafka_health_check_timeout: "{{ kafka_health_check_timeout | default(60) }}"
 
   tasks:
-    - name: Konfigurationswerte in {{ kafka_config_dest }} setzen
+    - name: Konfigurationswerte setzen in {{ kafka_config_dest }}
       ansible.builtin.lineinfile:
         path: "{{ kafka_config_dest }}"
         regexp: "^{{ item.key | regex_escape }}\\s*=.*"
