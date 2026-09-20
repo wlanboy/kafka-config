@@ -92,3 +92,62 @@ ansible-playbook -i inventory/prod/hosts.ini playbook.yml
   anzufassen.
 - `kafka_config_overrides` je Environment in `inventory/<env>/group_vars/all.yml`
   mit den tatsächlich gewünschten Werten befüllen (aktuell nur Beispielwerte).
+
+## KMinion-Installation (`kminion.yml`)
+
+Zweites, unabhängiges Playbook: installiert [KMinion](https://github.com/redpanda-data/kminion)
+(Prometheus-Exporter für Kafka) auf den `kafka`-Hosts und startet es als
+**systemd User-Unit** des `ansible_user` (bzw. `kminion_service_user`), die nach
+Kafka startet.
+
+```bash
+ansible-playbook -i inventory/<env>/hosts.ini kminion.yml
+```
+
+Es wird **nicht** templated — `config.yaml` und `kminion.service` liegen fertig
+gerendert pro Environment unter `files/<env>/` und werden 1:1 per
+`ansible.builtin.copy` auf die Zielhosts kopiert.
+
+```
+files/
+  entw/config.yaml, entw/kminion.service
+  test/config.yaml, test/kminion.service
+  atu/config.yaml,  atu/kminion.service
+  prod/config.yaml, prod/kminion.service
+```
+
+Ablauf:
+
+1. Lädt das kminion-Release-Archiv von einer Nexus/Artifactory-Mirror-URL
+   (`kminion_mirror_url`) direkt auf den Zielhost und entpackt es nach
+   `kminion_install_dir` (Default `/opt/local`) — dort landet u. a. die Binary
+   `/opt/local/kminion`.
+2. Kopiert `files/{{ env_name }}/config.yaml` nach `kminion_config_path`
+   (Default `/opt/local/config.yaml`). Broker-Liste, TLS und SASL stehen dort
+   bereits fertig für das jeweilige Environment drin.
+3. Aktiviert Lingering (`loginctl enable-linger`) für den Service-User, damit
+   dessen systemd User-Instanz auch ohne aktive Login-Session beim Boot läuft.
+4. Kopiert `files/{{ env_name }}/kminion.service` nach
+   `~/.config/systemd/user/kminion.service` (`After=kafka.service`) und
+   aktiviert/startet den Service über `systemctl --user`.
+5. Die Unit setzt `CONFIG_FILEPATH` auf `kminion_config_path`, damit kminion
+   die kopierte `config.yaml` lädt.
+
+Anpassungen pro Environment:
+
+- **`inventory/<env>/group_vars/all.yml`**: `kminion_mirror_url` — volle URL
+  zum `kminion_<version>_linux_amd64.tar.gz` auf dem internen
+  Nexus/Artifactory-Mirror (kein Default, Playbook bricht ohne diesen Wert
+  mit `assert` ab). Optional überschreibbar: `kminion_version` (Default
+  `2.3.6`), `kminion_install_dir` (Default `/opt/local`),
+  `kminion_service_user` (Default `ansible_user`).
+- **`files/<env>/config.yaml`**: Broker-Liste (`kafka.brokers`), TLS
+  (`kafka.tls.*`), SASL (`kafka.sasl.*`) und Exporter-Bind-Adresse/-Port
+  (`exporter.host`/`exporter.port`) direkt in der Datei anpassen.
+- **`files/<env>/kminion.service`**: nur anpassen, falls Install-Pfad oder
+  Kafka-Service-Name vom Default abweichen.
+
+Die Dateien `files/kminion` und `files/kminion_*.tar.gz` sind nur lokales
+Referenzmaterial (siehe `.gitignore`) und werden vom Playbook nicht
+verwendet — die Binary kommt zur Laufzeit ausschließlich vom
+Nexus/Artifactory-Mirror.

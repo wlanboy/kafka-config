@@ -1,0 +1,111 @@
+---
+- name: KMinion installieren und als User-Unit nach Kafka starten
+  hosts: kafka
+  gather_facts: false
+
+  vars:
+    # Defaults – pro Environment in inventory/<env>/group_vars/all.yml überschreibbar
+    kminion_version: "{{ kminion_version | default('2.3.6') }}"
+    # URL des Nexus/Artifactory-Mirrors für kminion_<version>_linux_amd64.tar.gz.
+    # Muss pro Environment gesetzt werden, es gibt bewusst keinen Default.
+    kminion_mirror_url: "{{ kminion_mirror_url | default('') }}"
+    kminion_install_dir: "{{ kminion_install_dir | default('/opt/local') }}"
+    kminion_config_path: "{{ kminion_config_path | default(kminion_install_dir + '/config.yaml') }}"
+    # User, unter dem die systemd User-Unit läuft. Default: der SSH-Login-User.
+    kminion_service_user: "{{ kminion_service_user | default(ansible_user) }}"
+
+  tasks:
+    - name: Prüfen, dass kminion_mirror_url gesetzt ist
+      ansible.builtin.assert:
+        that:
+          - kminion_mirror_url | length > 0
+        fail_msg: >-
+          kminion_mirror_url ist nicht gesetzt. Bitte in
+          inventory/<env>/group_vars/all.yml die URL des Nexus/Artifactory-Mirrors
+          für kminion_{{ kminion_version }}_linux_amd64.tar.gz hinterlegen.
+
+    - name: Passwd-Eintrag ermitteln (Home-Verzeichnis, UID) für {{ kminion_service_user }}
+      ansible.builtin.getent:
+        database: passwd
+        key: "{{ kminion_service_user }}"
+
+    - name: Home-Verzeichnis und UID als Facts setzen
+      ansible.builtin.set_fact:
+        kminion_home: "{{ getent_passwd[kminion_service_user][4] }}"
+        kminion_uid: "{{ getent_passwd[kminion_service_user][1] }}"
+
+    - name: Installationsverzeichnis anlegen unter {{ kminion_install_dir }}
+      become: true
+      ansible.builtin.file:
+        path: "{{ kminion_install_dir }}"
+        state: directory
+        owner: "{{ kminion_service_user }}"
+        group: "{{ kminion_service_user }}"
+        mode: "0755"
+
+    - name: KMinion-Archiv vom Mirror herunterladen und entpacken nach {{ kminion_install_dir }}
+      become: true
+      become_user: "{{ kminion_service_user }}"
+      ansible.builtin.unarchive:
+        src: "{{ kminion_mirror_url }}"
+        dest: "{{ kminion_install_dir }}"
+        remote_src: true
+        mode: "0755"
+      notify: KMinion neu starten
+
+    - name: Config.yaml kopieren nach {{ kminion_config_path }}
+      become: true
+      become_user: "{{ kminion_service_user }}"
+      ansible.builtin.copy:
+        src: "files/{{ env_name }}/config.yaml"
+        dest: "{{ kminion_config_path }}"
+        mode: "0640"
+      notify: KMinion neu starten
+
+    - name: Lingering aktivieren für {{ kminion_service_user }}
+      become: true
+      ansible.builtin.command:
+        cmd: "loginctl enable-linger {{ kminion_service_user }}"
+      register: kminion_linger
+      changed_when: "'Cannot' not in (kminion_linger.stderr | default(''))"
+
+    - name: Verzeichnis für systemd User-Units anlegen
+      become: true
+      become_user: "{{ kminion_service_user }}"
+      ansible.builtin.file:
+        path: "{{ kminion_home }}/.config/systemd/user"
+        state: directory
+        mode: "0755"
+
+    - name: KMinion User-Unit kopieren
+      become: true
+      become_user: "{{ kminion_service_user }}"
+      ansible.builtin.copy:
+        src: "files/{{ env_name }}/kminion.service"
+        dest: "{{ kminion_home }}/.config/systemd/user/kminion.service"
+        mode: "0644"
+      notify: KMinion neu starten
+
+    - name: KMinion User-Service aktivieren und starten
+      become: true
+      become_user: "{{ kminion_service_user }}"
+      ansible.builtin.systemd:
+        name: kminion.service
+        scope: user
+        daemon_reload: true
+        enabled: true
+        state: started
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ kminion_uid }}"
+
+  handlers:
+    - name: KMinion neu starten
+      become: true
+      become_user: "{{ kminion_service_user }}"
+      ansible.builtin.systemd:
+        name: kminion.service
+        scope: user
+        daemon_reload: true
+        state: restarted
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ kminion_uid }}"
