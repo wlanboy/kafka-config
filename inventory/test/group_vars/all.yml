@@ -8,3 +8,9 @@ kafka_config_overrides:
   num.partitions: "6"
   default.replication.factor: "2"
   log.retention.hours: "72"
+
+# Werte für kminion.yml (KMinion Prometheus-Exporter für Kafka).
+# kminion_mirror_url MUSS gesetzt werden (Nexus-URL zum tar.gz).
+# Broker-Liste, TLS, SASL und Exporter-Einstellungen stehen fertig gerendert
+# in files/test/config.yaml (und die Unit in files/test/kminion.service).
+kminion_mirror_url: "https://nexus.example.local/repository/generic-hosted/kminion/kminion_2.3.6_linux_amd64.tar.gz"

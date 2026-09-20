@@ -1,0 +1,89 @@
+#####################################################################################
+# KMinion Konfiguration für Environment: prod
+#
+# Diese Datei ist fertig gerendert und wird 1:1 per `ansible.builtin.copy`
+# durch kminion.yml nach {{ kminion_config_path }} (Default /opt/local/config.yaml)
+# auf die Kafka-Hosts kopiert. Änderungen an Broker-Liste, TLS oder SASL bitte
+# direkt in dieser Datei vornehmen.
+#
+# All config options can be configured via environment variables as well.
+# If you specify both the env variable and yaml option for the same configuration
+# the environment variable will take precedence. If you want to use a YAML config
+# file, specify the path to the config file by setting the env variable
+# CONFIG_FILEPATH.
+#####################################################################################
+
+logger:
+  # Valid values are: debug, info, warn, error, fatal, panic
+  level: info
+
+kafka:
+  brokers:
+    - "kafka01.prod.example.local:9092"
+    - "kafka02.prod.example.local:9092"
+    - "kafka03.prod.example.local:9092"
+  clientId: "kminion"
+  rackId: ""
+  tls:
+    enabled: false
+    caFilepath: ""
+    certFilepath: ""
+    keyFilepath: ""
+    passphrase: ""
+    insecureSkipTlsVerify: false
+
+  sasl:
+    # Whether or not SASL authentication will be used for authentication
+    enabled: false
+    # Username to use for PLAIN or SCRAM mechanism
+    username: ""
+    # Password to use for PLAIN or SCRAM mechanism
+    password: ""
+    # Mechanism to use for SASL Authentication. Valid values are PLAIN, SCRAM-SHA-256, SCRAM-SHA-512, GSSAPI, OAUTHBEARER
+    mechanism: "PLAIN"
+
+minion:
+  consumerGroups:
+    enabled: true
+    scrapeMode: adminApi
+    granularity: partition
+    allowedGroups: [ ".*" ]
+    ignoredGroups: [ ]
+  topics:
+    enabled: true
+    granularity: partition
+    allowedTopics: [ ".*" ]
+    ignoredTopics: [ ]
+    infoMetric:
+      configKeys: [ "cleanup.policy" ]
+  logDirs:
+    enabled: true
+  connectionHealthCheck:
+    enabled: false
+    probeInterval: 1m
+  endToEnd:
+    enabled: false
+    probeInterval: 100ms
+    topicManagement:
+      enabled: true
+      name: kminion-end-to-end
+      reconciliationInterval: 10m
+      replicationFactor: 1
+      partitionsPerBroker: 1
+      rebalancePartitions: true
+    producer:
+      ackSla: 5s
+      requiredAcks: all
+    consumer:
+      groupIdPrefix: kminion-end-to-end
+      deleteStaleConsumerGroups: false
+      roundtripSla: 20s
+      commitSla: 10s
+
+exporter:
+  # Namespace is the prefix for all exported Prometheus metrics
+  namespace: "kminion"
+  # Host that shall be used to bind the HTTP server on
+  host: ""
+  # Port that shall be used to bind the HTTP server on
+  port: 9090

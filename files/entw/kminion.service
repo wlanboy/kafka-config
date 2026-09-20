@@ -1,0 +1,15 @@
+[Unit]
+Description=KMinion - Prometheus Exporter fuer Apache Kafka
+After=network-online.target kafka.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=CONFIG_FILEPATH=/opt/local/config.yaml
+WorkingDirectory=/opt/local
+ExecStart=/opt/local/kminion
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
