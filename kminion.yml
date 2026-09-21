@@ -13,6 +13,14 @@
     kminion_config_path: "{{ kminion_config_path | default(kminion_install_dir + '/config.yaml') }}"
     # User, unter dem die systemd User-Unit läuft. Default: der SSH-Login-User.
     kminion_service_user: "{{ kminion_service_user | default(ansible_user) }}"
+    # Pfad zur JAAS-Config des Kafka-Brokers, aus der das SASL-Passwort für
+    # KMinion gelesen wird (Eintrag user_<kminion_sasl_username>="...").
+    kminion_jaas_path: "{{ kminion_jaas_path | default('/etc/kafka/kafka_server_jaas.conf') }}"
+    # SASL-Username, unter dem KMinion sich beim Broker authentifiziert.
+    # Muss als user_<name> in kminion_jaas_path hinterlegt sein.
+    kminion_sasl_username: "{{ kminion_sasl_username | default('monitoring') }}"
+    # Truststore (CA-Bundle) für die TLS-Verbindung zu den Brokern.
+    kminion_tls_ca_path: "{{ kminion_tls_ca_path | default('/etc/ssl/certs/ca-bundle.trust.crt') }}"
 
   tasks:
     - name: Prüfen, dass kminion_mirror_url gesetzt ist
@@ -53,13 +61,39 @@
         mode: "0755"
       notify: KMinion neu starten
 
-    - name: Config.yaml kopieren nach {{ kminion_config_path }}
+    - name: Inhalt der {{ kminion_jaas_path }} einlesen
+      become: true
+      ansible.builtin.slurp:
+        src: "{{ kminion_jaas_path }}"
+      register: kminion_jaas_raw
+
+    - name: SASL-Passwort für user_{{ kminion_sasl_username }} aus JAAS-Config extrahieren
+      ansible.builtin.set_fact:
+        kminion_sasl_password: >-
+          {{ (kminion_jaas_raw.content | b64decode
+              | regex_search('user_' ~ kminion_sasl_username ~ '\s*=\s*"([^"]*)"'))
+             | default('', true)
+             | regex_replace('user_' ~ kminion_sasl_username ~ '\s*=\s*"([^"]*)"', '\1') }}
+      no_log: true
+
+    - name: Sicherstellen, dass das SASL-Passwort gefunden wurde
+      ansible.builtin.assert:
+        that:
+          - kminion_sasl_password | length > 0
+        fail_msg: >-
+          user_{{ kminion_sasl_username }} wurde nicht in {{ kminion_jaas_path }}
+          gefunden. Bitte kminion_sasl_username prüfen oder den Eintrag in der
+          JAAS-Config des Brokers ergänzen.
+      no_log: true
+
+    - name: Config.yaml rendern nach {{ kminion_config_path }}
       become: true
       become_user: "{{ kminion_service_user }}"
-      ansible.builtin.copy:
-        src: "files/{{ env_name }}/config.yaml"
+      ansible.builtin.template:
+        src: "files/{{ env_name }}/config.yaml.j2"
         dest: "{{ kminion_config_path }}"
         mode: "0640"
+      no_log: true
       notify: KMinion neu starten
 
     - name: Lingering aktivieren für {{ kminion_service_user }}
