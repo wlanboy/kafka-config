@@ -1,10 +1,11 @@
 #####################################################################################
-# KMinion Konfiguration für Environment: atu
+# KMinion Konfiguration für Environment: test
 #
-# Diese Datei ist fertig gerendert und wird 1:1 per `ansible.builtin.copy`
-# durch kminion.yml nach {{ kminion_config_path }} (Default /opt/local/config.yaml)
-# auf die Kafka-Hosts kopiert. Änderungen an Broker-Liste, TLS oder SASL bitte
-# direkt in dieser Datei vornehmen.
+# Dies ist ein Jinja2-Template, das per `ansible.builtin.template` durch
+# kminion.yml nach {{ kminion_config_path }} (Default /opt/local/config.yaml)
+# auf die Kafka-Hosts gerendert wird. Das SASL-Passwort wird zur Laufzeit aus
+# {{ kminion_jaas_path }} (Eintrag user_{{ kminion_sasl_username }}) gelesen.
+# Änderungen an Broker-Liste oder TLS bitte direkt in dieser Datei vornehmen.
 #
 # All config options can be configured via environment variables as well.
 # If you specify both the env variable and yaml option for the same configuration
@@ -19,13 +20,13 @@ logger:
 
 kafka:
   brokers:
-    - "kafka01.atu.example.local:9092"
-    - "kafka02.atu.example.local:9092"
+    - "kafka01.test.example.local:9092"
+    - "kafka02.test.example.local:9092"
   clientId: "kminion"
   rackId: ""
   tls:
-    enabled: false
-    caFilepath: ""
+    enabled: true
+    caFilepath: "{{ kminion_tls_ca_path }}"
     certFilepath: ""
     keyFilepath: ""
     passphrase: ""
@@ -33,11 +34,11 @@ kafka:
 
   sasl:
     # Whether or not SASL authentication will be used for authentication
-    enabled: false
+    enabled: true
     # Username to use for PLAIN or SCRAM mechanism
-    username: ""
-    # Password to use for PLAIN or SCRAM mechanism
-    password: ""
+    username: "{{ kminion_sasl_username }}"
+    # Password to use for PLAIN or SCRAM mechanism, aus {{ kminion_jaas_path }} gelesen
+    password: "{{ kminion_sasl_password }}"
     # Mechanism to use for SASL Authentication. Valid values are PLAIN, SCRAM-SHA-256, SCRAM-SHA-512, GSSAPI, OAUTHBEARER
     mechanism: "PLAIN"
 
