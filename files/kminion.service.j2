@@ -5,9 +5,9 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-Environment=CONFIG_FILEPATH=/opt/local/kminion/config.yaml
-WorkingDirectory=/opt/local/kminion
-ExecStart=/opt/local/kminion/kminion
+Environment=CONFIG_FILEPATH={{ kminion_config_path }}
+WorkingDirectory={{ kminion_install_dir }}
+ExecStart={{ kminion_install_dir }}/kminion
 Restart=on-failure
 RestartSec=5
 

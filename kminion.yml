@@ -111,11 +111,11 @@
         state: directory
         mode: "0755"
 
-    - name: KMinion User-Unit kopieren
+    - name: KMinion User-Unit rendern
       become: true
       become_user: "{{ kminion_service_user }}"
-      ansible.builtin.copy:
-        src: "files/kminion.service"
+      ansible.builtin.template:
+        src: "files/kminion.service.j2"
         dest: "{{ kminion_home }}/.config/systemd/user/kminion.service"
         mode: "0644"
       notify: KMinion neu starten
