@@ -1,0 +1,15 @@
+---
+# Gemeinsame Defaults für ALLE Environments/VMs (entw, test, atu, prod).
+#
+# WICHTIG zur Ansible-Precedence: Diese Datei liegt neben playbook.yml/kminion.yml
+# ("playbook group_vars/all") und hat DAMIT VORRANG vor
+# inventory/<env>/group_vars/all.yml ("inventory group_vars/all") – bei
+# gleichem Variablennamen gewinnt IMMER diese Datei, ein Eintrag in
+# inventory/<env>/group_vars/all.yml wird dann stillschweigend ignoriert.
+#
+# Nur Werte hier eintragen, die wirklich für jede Umgebung identisch sein
+# sollen. Werte, die sich pro Environment unterscheiden (oder zukünftig
+# unterscheiden könnten, z. B. kminion_mirror_url), gehören weiterhin nach
+# inventory/<env>/group_vars/all.yml.
+kminion_version: "2.3.6"
+kminion_install_dir: "/opt/local/kminion"

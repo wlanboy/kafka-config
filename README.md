@@ -15,12 +15,22 @@ Datei verändert, nur der Inhalt.
 ```
 ansible.cfg
 playbook.yml
+group_vars/all.yml        → Defaults für ALLE Environments (z. B. kminion_version,
+                             kminion_install_dir)
 inventory/
-  entw/hosts.ini  + group_vars/all.yml  → kafka_config_overrides (Werte für entw)
-  test/hosts.ini  + group_vars/all.yml  → kafka_config_overrides (Werte für test)
-  atu/hosts.ini   + group_vars/all.yml  → kafka_config_overrides (Werte für atu)
-  prod/hosts.ini  + group_vars/all.yml  → kafka_config_overrides (Werte für prod)
+  entw/hosts.ini  + group_vars/all.yml  → env-spezifische Werte (kafka_config_overrides, ...)
+  test/hosts.ini  + group_vars/all.yml  → env-spezifische Werte (kafka_config_overrides, ...)
+  atu/hosts.ini   + group_vars/all.yml  → env-spezifische Werte (kafka_config_overrides, ...)
+  prod/hosts.ini  + group_vars/all.yml  → env-spezifische Werte (kafka_config_overrides, ...)
 ```
+
+**Precedence-Falle:** `group_vars/all.yml` im Repo-Root hat bei Ansible Vorrang vor
+`inventory/<env>/group_vars/all.yml`. Eine Variable, die in beiden Dateien unter
+demselben Namen steht, wird also immer aus der Root-Datei genommen — ein
+"Override" in `inventory/<env>/group_vars/all.yml` würde dann still ignoriert.
+Deshalb gehören in `group_vars/all.yml` nur Werte, die für jede Umgebung
+identisch sein sollen; alles Env-spezifische bleibt in
+`inventory/<env>/group_vars/all.yml`.
 
 ## Ausführung
 

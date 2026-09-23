@@ -13,6 +13,4 @@ kafka_config_overrides:
 # kminion_mirror_url MUSS gesetzt werden (Nexus-URL zum tar.gz).
 # Broker-Liste, TLS, SASL und Exporter-Einstellungen stehen fertig gerendert
 # in files/config.yaml.j2 (und die Unit in files/kminion.service).
-kminion_version: "2.3.6"
-kminion_install_dir: "/opt/local/kminion"
 kminion_mirror_url: "https://nexus.example.local/repository/generic-hosted/kminion/kminion_2.3.6_linux_amd64.tar.gz"
