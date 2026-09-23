@@ -20,8 +20,7 @@ logger:
 
 kafka:
   brokers:
-    - "kafka01.test.example.local:9092"
-    - "kafka02.test.example.local:9092"
+    - "{{ inventory_hostname }}:9092"
   clientId: "kminion"
   rackId: ""
   tls:
@@ -84,6 +83,6 @@ exporter:
   # Namespace is the prefix for all exported Prometheus metrics
   namespace: "kminion"
   # Host that shall be used to bind the HTTP server on
-  host: ""
+  host: "{{ inventory_hostname }}"
   # Port that shall be used to bind the HTTP server on
   port: 9090

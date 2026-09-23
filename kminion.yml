@@ -9,7 +9,7 @@
     # URL des Nexus/Artifactory-Mirrors für kminion_<version>_linux_amd64.tar.gz.
     # Muss pro Environment gesetzt werden, es gibt bewusst keinen Default.
     kminion_mirror_url: "{{ kminion_mirror_url | default('') }}"
-    kminion_install_dir: "{{ kminion_install_dir | default('/opt/local') }}"
+    kminion_install_dir: "{{ kminion_install_dir | default('/opt/local/kminion') }}"
     kminion_config_path: "{{ kminion_config_path | default(kminion_install_dir + '/config.yaml') }}"
     # User, unter dem die systemd User-Unit läuft. Default: der SSH-Login-User.
     kminion_service_user: "{{ kminion_service_user | default(ansible_user) }}"
@@ -115,7 +115,7 @@
       become: true
       become_user: "{{ kminion_service_user }}"
       ansible.builtin.copy:
-        src: "files/{{ env_name }}/kminion.service"
+        src: "files/kminion.service"
         dest: "{{ kminion_home }}/.config/systemd/user/kminion.service"
         mode: "0644"
       notify: KMinion neu starten
